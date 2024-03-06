@@ -161,6 +161,27 @@ export class UsersService {
     return { user, response };
   }
 
+  // get logged in user
+  async getLoggedInUser(req: any) {
+    const user = req.user;
+    const accessToken = req.accesstoken;
+    const refreshToken = req.refreshtoken;
+
+    // console.log(user, accessToken, refreshToken, req);
+    return { user, accessToken, refreshToken };
+  }
+
+  async logout(req: any) {
+    req.user = null;
+    req.accesstoken = null;
+    req.refreshtoken = null;
+
+    // console.log(user, accessToken, refreshToken, req);
+    return { 
+      message : "Logout successfully "
+     };
+  }
+
   // get all users service
   async getUsers() {
     return this.prismaService.user.findMany({});
