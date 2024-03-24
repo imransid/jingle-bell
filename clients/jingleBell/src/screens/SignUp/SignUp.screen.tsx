@@ -1,8 +1,8 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import { ScrollView, Text, View, TouchableOpacity } from 'react-native';
 import BackgroundImage from "../../components/BackgroundImage"; // Assuming the component file is in the same directory
 import { Grid, Row, Col } from "react-native-easy-grid"
-import { TextInput, TextItem, Button } from '@/components'; //  Button
+import { TextInput, TextItem, Button, Toast } from '@/components'; //  Button
 import Styles from './Styles';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { colors } from '@/theme/colors';
@@ -12,10 +12,13 @@ import { mobileSignUpFormValidation } from '@/utils/formValidation';
 import { Controller, useForm } from 'react-hook-form';
 import type { SubmitHandler } from 'react-hook-form';
 import { useMutation } from '@apollo/client'
+import { REGISTER_USER } from '@/store/grpahql/actions/register.action';
 import PopupModal from '@/components/PopupModal/PopupModal';
 import { ACTIVATE_USER } from '@/store/grpahql/actions/activation.action';
 import ToastPopUpIOS from '@/utils/Toast.ios';
-import { AUTH_USER } from '@/store/grpahql/actions/login.action';
+import { StackScreenProps } from '@react-navigation/stack';
+import { useNavigation } from '@react-navigation/native';
+import { IToastRef } from '@/components/Toast';
 interface ISignUpFormData {
   email: string;
   password: string;
@@ -35,12 +38,14 @@ const throttle = (func: any, delay: number) => {
     }
   };
 };
-export default function App() {
-
-  const [loginMutation, { loading, error, data }] = useMutation(AUTH_USER)
-
+export default function App({ navigation }: any) {
+  const toastRef = useRef<IToastRef | null>(null);
+  const [registerMutation, { loading, error, data }] = useMutation(REGISTER_USER)
+  const [activateMutation, { loading: isLoading, error: isError, data: isData }] = useMutation(ACTIVATE_USER)
   const imageUri = 'https://images.unsplash.com/photo-1585208798174-6cedd86e019a?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2073&q=80';
-
+  const [isVisible, setIsVisible] = useState(false);
+  const [OtpValue, setOtpValue] = useState('');
+  const [token, setToken] = useState('');
 
   const IconMedia = ({ name, color, size = 30 }: { name: string, color: string, size: number }) => <Icon name={name} size={size} color={color} />;
 
@@ -52,6 +57,41 @@ export default function App() {
     []
   );
 
+  const onSubmitItem = useCallback(
+    throttle(async () => {
+      console.log("Value passed:", token, OtpValue);
+
+      try {
+
+        let data = {
+          activationToken: token,
+          activationCode: OtpValue
+        }
+
+
+        const response = await activateMutation({
+          variables: data
+        })
+
+
+        if (response?.data?.activateUser?.user !== undefined) {
+          ToastPopUpIOS('activation successfully.!')
+          setIsVisible(false);
+          navigation.navigate('SignInScreen',);
+
+        } else {
+          console.log('response', response)
+        }
+
+
+      } catch (err) {
+        console.error('error', err);
+      }
+    }, 300),
+    [token, OtpValue]
+  );
+
+
   // yap validation
   const {
     control,
@@ -62,6 +102,8 @@ export default function App() {
     defaultValues: {
       email: '',
       password: '',
+      userName: '',
+      phoneNumber: ''
     }
   });
 
@@ -70,24 +112,24 @@ export default function App() {
     try {
 
       let data = {
+        name: formData.userName,
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        phone_number: parseFloat(formData.phoneNumber)
       }
 
 
-      const response = await loginMutation({
+      const response = await registerMutation({
         variables: data
       })
 
-      console.log('response', response)
 
-
-      // if (response?.data?.register?.activation_token !== undefined) {
-      //   setToken(response?.data?.register?.activation_token)
-      //   setIsVisible(true)
-      // } else {
-      //   console.log('response', response)
-      // }
+      if (response?.data?.register?.activation_token !== undefined) {
+        setToken(response?.data?.register?.activation_token)
+        setIsVisible(true)
+      } else {
+        console.log('response', response)
+      }
 
 
     } catch (err) {
@@ -98,6 +140,7 @@ export default function App() {
 
   return (
     <BackgroundImage imageUri={imageUri}>
+      <Toast ref={toastRef} />
       <Grid>
         <Row style={{ height: '20%' }}></Row>
         <Row style={Styles.radiosRow}>
@@ -106,7 +149,31 @@ export default function App() {
               <Row>
                 <TextItem txt={"I'm hungry, I need good meals"} color='#064706' variant='headlineLarge' fontWeight='600' />
               </Row>
+              <Row style={Styles.item}>
+                <Col>
+                  <Row style={Styles.label}>
+                    <TextItem txt={"Full Name"} color='#064706' variant='labelLarge' fontWeight='600' />
+                    {errors.userName != null && <Text style={Styles.errorTxt}>   *{errors.userName.message}</Text>}
+                  </Row>
+                  <Row>
+                    <Controller
+                      control={control}
+                      rules={{
+                        required: true
+                      }}
+                      render={({ field: { onChange, value } }) => (
+                        <TextInput
+                          value={value}
+                          onChangeText={onChange}
+                          placeholder="Full Name"
+                        />
+                      )}
+                      name="userName"
+                    />
 
+                  </Row>
+                </Col>
+              </Row>
               <Row style={Styles.item}>
                 <Col>
                   <Row style={Styles.label}>
@@ -127,6 +194,31 @@ export default function App() {
                         />
                       )}
                       name="email"
+                    />
+                  </Row>
+                </Col>
+              </Row>
+
+              <Row style={Styles.item}>
+                <Col>
+                  <Row style={Styles.label}>
+                    <TextItem txt={"Phone Number"} color='#064706' variant='labelLarge' fontWeight='600' />
+                    {errors.phoneNumber != null && <Text style={Styles.errorTxt}>   *{errors.phoneNumber.message}</Text>}
+                  </Row>
+                  <Row>
+                    <Controller
+                      control={control}
+                      rules={{
+                        required: true
+                      }}
+                      render={({ field: { onChange, value } }) => (
+                        <TextInput
+                          value={value}
+                          onChangeText={onChange}
+                          placeholder="Phone Number"
+                        />
+                      )}
+                      name="phoneNumber"
                     />
                   </Row>
                 </Col>
@@ -159,13 +251,21 @@ export default function App() {
 
               <Row style={Styles.item}>
                 <Col>
-                  <View style={{ width: '100%', height: 10 }}></View>
                   <Row>
-                    <Button pressFunction={() => handleSubmit(onSubmit)()} txt={'LogIn'} type='green' />
+                    <Button pressFunction={() => {
+                      toastRef.current?.show({
+                        type: 'warning',
+                        text: 'Success Toast',
+                        duration: 9000
+                      });
+                    }
+
+                      //  handleSubmit(onSubmit)()
+
+                    } txt={'Create Account'} type='green' />
                   </Row>
-                  <View style={{ width: '100%', height: 10 }}></View>
                   <Row>
-                    <Button txt={'Sign Up'} type='white' />
+                    <Button txt={'Sign in'} type='white' />
                   </Row>
                 </Col>
               </Row>
@@ -201,7 +301,29 @@ export default function App() {
                   </Row>
                 </Col>
               </Row>
-
+              <PopupModal isVisible={isVisible} onDismiss={() => setIsVisible(false)}>
+                <View style={Styles.card}>
+                  <TextItem txt={"Enter Code "} color='#ecf2ec' variant='titleMedium' fontWeight='600' />
+                  <View style={{ width: '100%', height: 10 }}></View>
+                  <TextInput
+                    value={OtpValue}
+                    onChangeText={(e) => setOtpValue(e)}
+                    placeholder="Enter Code Here"
+                  />
+                  <View style={{ padding: 10, justifyContent: 'center', alignItems: 'center' }}>
+                    <CustomTouchable onPress={onSubmitItem}>
+                      <View style={{ flexDirection: 'row' }}>
+                        <View style={{ height: 25, justifyContent: 'center' }}>
+                          <TextItem txt='Submit ' color={'#ecf2ec'} variant='titleMedium' fontWeight='600' />
+                        </View>
+                        <View style={[Styles.icon, { justifyContent: 'center' }]}>
+                          <IconMedia name="send" color={colors.linkWater} size={12} />
+                        </View>
+                      </View>
+                    </CustomTouchable>
+                  </View>
+                </View>
+              </PopupModal>
             </ScrollView>
           </View>
         </Row>

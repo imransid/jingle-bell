@@ -9,6 +9,8 @@ import Navigator from '../src/navigators';
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import database from './store/database';
 import { persistor, store } from './store';
+import { ApolloProvider } from '@apollo/client';
+import { graphqlClient } from './store/grpahql/gql.setup';
 
 const theme = {
   ...DefaultTheme,
@@ -28,17 +30,17 @@ Sentry.init({
 
 const App: FC = () => {
   return (
-
-    <StoreProvider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
-        <PaperProvider theme={theme}>
-          <DatabaseProvider database={database}>
-            <Navigator />
-          </DatabaseProvider>
-        </PaperProvider>
-      </PersistGate>
-    </StoreProvider>
-
+    <ApolloProvider client={graphqlClient}>
+      <StoreProvider store={store}>
+        <PersistGate loading={null} persistor={persistor}>
+          <PaperProvider theme={theme}>
+            <DatabaseProvider database={database}>
+              <Navigator />
+            </DatabaseProvider>
+          </PaperProvider>
+        </PersistGate>
+      </StoreProvider>
+    </ApolloProvider>
   );
 };
 
