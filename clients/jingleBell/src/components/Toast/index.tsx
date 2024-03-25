@@ -10,6 +10,10 @@ import Animated, {
     runOnJS,
 } from 'react-native-reanimated';
 
+// success
+// warning
+// error
+
 export interface IToastRef {
     show: ({ type, text, duration }: { type: string; text: string; duration: number }) => void;
 }
@@ -26,14 +30,12 @@ const Toast = forwardRef<IToastRef>((_, ref) => {
     const [showing, setShowing] = useState<boolean>(false);
     const [toastText, setToastText] = useState<string>('');
     const [toastType, setToastType] = useState<string>('success');
-    // const [toastDuration, setToastDuration] = useState<number>(2000);
 
     const show = useCallback(
         ({ type, text, duration }: IShow) => {
             setShowing(true);
             setToastType(type);
             setToastText(text);
-            // setToastDuration(duration);
             toastTopAnimation.value = withSequence(
                 withTiming(TOP_VALUE),
                 withDelay(

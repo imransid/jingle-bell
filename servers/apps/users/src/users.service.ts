@@ -1,12 +1,18 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtVerifyOptions } from '@nestjs/jwt';
-import { ActivationDTO, LoginDTO, RegisterDTO } from './dto/user.dto';
+import {
+  ActivationDTO,
+  ForgetPasswordDto,
+  LoginDTO,
+  RegisterDTO,
+} from './dto/user.dto';
 import { PrismaService } from '../../../prisma/Prisma.service';
 import { Response } from 'express';
 import * as bcrypt from 'bcryptjs';
 import { EmailService } from './email/email.service';
 import { TokeSender } from './utils/sendToken';
+import { User } from '.prisma/client';
 
 interface IUserData {
   name: string;
@@ -177,13 +183,43 @@ export class UsersService {
     req.refreshtoken = null;
 
     // console.log(user, accessToken, refreshToken, req);
-    return { 
-      message : "Logout successfully "
-     };
+    return {
+      message: 'Logout successfully ',
+    };
   }
 
   // get all users service
   async getUsers() {
     return this.prismaService.user.findMany({});
+  }
+
+  // generate forgot Password Link
+  async generateForgetPasswordLink(user: IUserData) {
+    const forgotPasswordToken = this.jwtService.sign(
+      {
+        user,
+      },
+      {
+        secret: this.configService.get<string>('FORGET_PASSWORD_CODE'),
+        expiresIn: '5m',
+      },
+    );
+
+    return { forgotPasswordToken };
+  }
+
+  // forget Password
+  async forgetPassword(forgetPasswordDto: ForgetPasswordDto) {
+    const { email } = forgetPasswordDto;
+
+    const user = await this.prismaService.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found in this email.');
+    }
+
+    return await this.generateForgetPasswordLink(user);
   }
 }

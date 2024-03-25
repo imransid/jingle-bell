@@ -16,9 +16,6 @@ import { REGISTER_USER } from '@/store/grpahql/actions/register.action';
 import PopupModal from '@/components/PopupModal/PopupModal';
 import { ACTIVATE_USER } from '@/store/grpahql/actions/activation.action';
 import ToastPopUpIOS from '@/utils/Toast.ios';
-import { StackScreenProps } from '@react-navigation/stack';
-import { useNavigation } from '@react-navigation/native';
-import { IToastRef } from '@/components/Toast';
 interface ISignUpFormData {
   email: string;
   password: string;
@@ -39,7 +36,6 @@ const throttle = (func: any, delay: number) => {
   };
 };
 export default function App({ navigation }: any) {
-  const toastRef = useRef<IToastRef | null>(null);
   const [registerMutation, { loading, error, data }] = useMutation(REGISTER_USER)
   const [activateMutation, { loading: isLoading, error: isError, data: isData }] = useMutation(ACTIVATE_USER)
   const imageUri = 'https://images.unsplash.com/photo-1585208798174-6cedd86e019a?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2073&q=80';
@@ -77,10 +73,20 @@ export default function App({ navigation }: any) {
         if (response?.data?.activateUser?.user !== undefined) {
           ToastPopUpIOS('activation successfully.!')
           setIsVisible(false);
-          navigation.navigate('SignInScreen',);
+          // toastRef.current?.show({
+          //   type: 'success',
+          //   text: 'Successfully Save.',
+          //   duration: 2000
+          // });
+          navigation.navigate('SignInScreen');
 
         } else {
-          console.log('response', response)
+          ToastPopUpIOS('activation Failed.!')
+          // toastRef.current?.show({
+          //   type: 'error',
+          //   text: 'Something went wrong. Please Try again later.',
+          //   duration: 2000
+          // });
         }
 
 
@@ -88,7 +94,7 @@ export default function App({ navigation }: any) {
         console.error('error', err);
       }
     }, 300),
-    [token, OtpValue]
+    [token, OtpValue,]
   );
 
 
@@ -140,7 +146,6 @@ export default function App({ navigation }: any) {
 
   return (
     <BackgroundImage imageUri={imageUri}>
-      <Toast ref={toastRef} />
       <Grid>
         <Row style={{ height: '20%' }}></Row>
         <Row style={Styles.radiosRow}>
@@ -252,20 +257,14 @@ export default function App({ navigation }: any) {
               <Row style={Styles.item}>
                 <Col>
                   <Row>
-                    <Button pressFunction={() => {
-                      toastRef.current?.show({
-                        type: 'warning',
-                        text: 'Success Toast',
-                        duration: 9000
-                      });
-                    }
+                    <Button pressFunction={() =>
 
-                      //  handleSubmit(onSubmit)()
+                      handleSubmit(onSubmit)()
 
                     } txt={'Create Account'} type='green' />
                   </Row>
                   <Row>
-                    <Button txt={'Sign in'} type='white' />
+                    <Button pressFunction={() => navigation.navigate('SignInScreen')} txt={'Sign in'} type='white' />
                   </Row>
                 </Col>
               </Row>

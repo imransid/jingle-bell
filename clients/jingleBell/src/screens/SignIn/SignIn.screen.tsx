@@ -1,14 +1,14 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { ScrollView, Text, View, TouchableOpacity } from 'react-native';
 import BackgroundImage from "../../components/BackgroundImage"; // Assuming the component file is in the same directory
 import { Grid, Row, Col } from "react-native-easy-grid"
-import { TextInput, TextItem, Button } from '@/components'; //  Button
+import { TextInput, TextItem, Button, Toast } from '@/components'; //  Button
 import Styles from './Styles';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { colors } from '@/theme/colors';
 import { CustomTouchable } from '@/components/TouchableHandler';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { mobileSignUpFormValidation } from '@/utils/formValidation';
+import { mobileSignInFormValidation } from '@/utils/formValidation';
 import { Controller, useForm } from 'react-hook-form';
 import type { SubmitHandler } from 'react-hook-form';
 import { useMutation } from '@apollo/client'
@@ -16,11 +16,11 @@ import PopupModal from '@/components/PopupModal/PopupModal';
 import { ACTIVATE_USER } from '@/store/grpahql/actions/activation.action';
 import ToastPopUpIOS from '@/utils/Toast.ios';
 import { AUTH_USER } from '@/store/grpahql/actions/login.action';
+import { IToastRef } from '@/components/Toast';
 interface ISignUpFormData {
   email: string;
   password: string;
-  userName: string;
-  phoneNumber: string;
+
 }
 
 const throttle = (func: any, delay: number) => {
@@ -36,9 +36,8 @@ const throttle = (func: any, delay: number) => {
   };
 };
 export default function App() {
-
+  const toastRef = useRef<IToastRef | null>(null);
   const [loginMutation, { loading, error, data }] = useMutation(AUTH_USER)
-
   const imageUri = 'https://images.unsplash.com/photo-1585208798174-6cedd86e019a?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2073&q=80';
 
 
@@ -58,7 +57,7 @@ export default function App() {
     handleSubmit,
     formState: { errors }
   } = useForm({
-    resolver: yupResolver(mobileSignUpFormValidation),
+    resolver: yupResolver(mobileSignInFormValidation),
     defaultValues: {
       email: '',
       password: '',
@@ -68,26 +67,27 @@ export default function App() {
   // onsubmit
   const onSubmit: SubmitHandler<ISignUpFormData> = async (formData: ISignUpFormData): Promise<void> => {
     try {
-
       let data = {
         email: formData.email,
         password: formData.password
       }
-
-
+      console.log('data', data)
       const response = await loginMutation({
         variables: data
       })
 
-      console.log('response', response)
-
-
-      // if (response?.data?.register?.activation_token !== undefined) {
-      //   setToken(response?.data?.register?.activation_token)
-      //   setIsVisible(true)
-      // } else {
-      //   console.log('response', response)
-      // }
+      if (response?.data?.login?.accessToken !== undefined) {
+        ToastPopUpIOS('Login successfully.!')
+        // setToken(response?.data?.register?.activation_token)
+        // setIsVisible(true)
+      } else {
+        // console.log('response', response)
+        toastRef.current?.show({
+          type: 'error',
+          text: 'Something went wrong. Please Try again later.',
+          duration: 2000
+        });
+      }
 
 
     } catch (err) {
@@ -99,6 +99,7 @@ export default function App() {
   return (
     <BackgroundImage imageUri={imageUri}>
       <Grid>
+        <Toast ref={toastRef} />
         <Row style={{ height: '20%' }}></Row>
         <Row style={Styles.radiosRow}>
           <View style={{ flex: 1 }}>
